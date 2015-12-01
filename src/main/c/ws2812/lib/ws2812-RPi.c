@@ -711,8 +711,8 @@ void startTransfer(void) {
 
 // Update LEDs
 void show(void) {
-	// Clear out the PWM buffer
-	// Disabled, because we will overwrite the buffer anyway.
+	// Clear out the PWM buffer, do NOT disable it!!!!
+	clearPWMBuffer();
 
 	// Read data from LEDBuffer[], translate it into wire format, and write to PWMWaveform
 	int i, j;

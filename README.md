@@ -1,6 +1,6 @@
 # RPi Library for ws2812
 
-This is a fork of [tobyweston/unicorn-hat]https://github.com/tobyweston/unicorn-hat
+This is a based on [tobyweston/unicorn-hat](https://github.com/tobyweston/unicorn-hat)
 
 Gives low-level access to led strip ws2812
 

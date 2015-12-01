@@ -10,7 +10,7 @@ public interface LedStrip {
 
 	double getBrightness();
 	
-	int getNumberPixels();
+	long getNumberPixels();
 
     void show();
 

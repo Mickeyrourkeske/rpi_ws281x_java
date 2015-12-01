@@ -37,8 +37,8 @@ public class LedStripWs2812 implements LedStrip {
 	}
 
 	@Override
-	public int getNumberPixels() {
-		return numPixels;
+	public long getNumberPixels() {
+		return ws2812.numPixels();
 	}
 	
     @Override

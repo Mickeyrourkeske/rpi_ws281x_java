@@ -14,7 +14,5 @@ make shared
 
 cd -
 mvn install
+cp target/rpi_ws2812_java-1.0.jar .
 ```
-
-
-

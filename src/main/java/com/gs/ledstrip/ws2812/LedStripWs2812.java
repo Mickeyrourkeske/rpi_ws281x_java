@@ -58,7 +58,6 @@ public class LedStripWs2812 implements LedStrip {
 	@Override
 	public void shutdown() {
 		clear();
-		show();
 		ws2812.terminate(0);
 	}
 }

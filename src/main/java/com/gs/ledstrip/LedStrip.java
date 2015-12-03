@@ -2,7 +2,7 @@ package com.gs.ledstrip;
 
 public interface LedStrip {
 
-    void setPixelColor(long pixel, short r, short g, short b);
+    void setPixelColor(int pixel, short r, short g, short b);
     
     void setAllPixelColors(short r, short g, short b);
 
@@ -10,7 +10,7 @@ public interface LedStrip {
 
 	double getBrightness();
 	
-	long getNumberPixels();
+	int getNumberPixels();
 
     void show();
 

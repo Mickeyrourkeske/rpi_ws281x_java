@@ -13,7 +13,7 @@ public class LedStripWs2812 implements LedStrip {
 
 	
 	@Override
-	public void setPixelColor(long pixel, short r, short g, short b) {
+	public void setPixelColor(int pixel, short r, short g, short b) {
 		ws2812.setPixelColor(pixel, r, g, b);
 	}
 	
@@ -37,8 +37,8 @@ public class LedStripWs2812 implements LedStrip {
 	}
 
 	@Override
-	public long getNumberPixels() {
-		return ws2812.numPixels();
+	public int getNumberPixels() {
+		return (int) ws2812.numPixels();
 	}
 	
     @Override

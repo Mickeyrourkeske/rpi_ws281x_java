@@ -1,4 +1,4 @@
-package com.gs.ledstrip.example;
+package com.gs.ledstrip.sample;
 
 import java.util.Random;
 

@@ -1,5 +1,5 @@
 /*
- * ws2811.h
+ * rpihw.h
  *
  * Copyright (c) 2014 Jeremy Garff <jer @ jers.net>
  *
@@ -28,43 +28,23 @@
  */
 
 
-#ifndef __WS2811_H__
-#define __WS2811_H__
+#ifndef __RPIHW_H__
+#define __RPIHW_H__
 
 
-#include "rpihw.h"
-#include "pwm.h"
+typedef struct {
+    uint32_t type;
+#define RPI_HWVER_TYPE_UNKNOWN                   0
+#define RPI_HWVER_TYPE_PI1                       1
+#define RPI_HWVER_TYPE_PI2                       2
+    uint32_t hwver;
+    uint32_t periph_base;
+    uint32_t videocore_base;
+    char *desc;
+} rpi_hw_t;
 
 
-#define WS2811_TARGET_FREQ                       800000   // Can go as low as 400000
-
-struct ws2811_device;
-
-typedef uint32_t ws2811_led_t;                   //< 0x00RRGGBB
-typedef struct
-{
-    int gpionum;                                 //< GPIO Pin with PWM alternate function, 0 if unused
-    int invert;                                  //< Invert output signal
-    int count;                                   //< Number of LEDs, 0 if channel is unused
-    int brightness;                              //< Brightness value between 0 and 255
-    ws2811_led_t *leds;                          //< LED buffers, allocated by driver based on count
-} ws2811_channel_t;
-
-typedef struct
-{
-    struct ws2811_device *device;                //< Private data for driver use
-    const rpi_hw_t *rpi_hw;                      //< RPI Hardware Information
-    uint32_t freq;                               //< Required output frequency
-    int dmanum;                                  //< DMA number _not_ already in use
-    ws2811_channel_t channel[RPI_PWM_CHANNELS];
-} ws2811_t;
+const rpi_hw_t *rpi_hw_detect(void);
 
 
-int ws2811_init(ws2811_t *ws2811);               //< Initialize buffers/hardware
-void ws2811_fini(ws2811_t *ws2811);              //< Tear it all down
-int ws2811_render(ws2811_t *ws2811);             //< Send LEDs off to hardware
-int ws2811_wait(ws2811_t *ws2811);               //< Wait for DMA completion
-
-
-#endif /* __WS2811_H__ */
-
+#endif /* __RPIHW_H__ */

@@ -38,7 +38,6 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 
-#include "board_info.h"
 #include "dma.h"
 
 
@@ -64,7 +63,7 @@ const static uint32_t dma_offset[] =
 };
 
 
-uint32_t dmanum_to_phys(int dmanum)
+uint32_t dmanum_to_offset(int dmanum)
 {
     int array_size = sizeof(dma_offset) / sizeof(dma_offset[0]);
 
@@ -73,7 +72,7 @@ uint32_t dmanum_to_phys(int dmanum)
         return 0;
     }
 
-    return dma_offset[dmanum] + board_info_peripheral_base_addr();
+    return dma_offset[dmanum];
 }
 
 

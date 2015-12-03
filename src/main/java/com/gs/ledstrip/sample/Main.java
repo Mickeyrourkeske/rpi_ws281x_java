@@ -3,14 +3,14 @@ package com.gs.ledstrip.sample;
 import java.util.Random;
 
 import com.gs.ledstrip.LedStrip;
-import com.gs.ledstrip.ws2812.LedStripWs2812;
+import com.gs.ledstrip.ws2811.LedStripWs2811;
 
 public class Main {
 
 	volatile static boolean endless = true;
 
 	public static void main(String[] args) throws Exception {
-		LedStrip strip = new LedStripWs2812(8);
+		LedStrip strip = new LedStripWs2811(15, 18, 800000, 5, 255);
 		strip.clear();
 		strip.show();
 
@@ -38,10 +38,9 @@ public class Main {
 					strip.setPixelColor(j, (short) random.nextInt(256), (short) random.nextInt(256),
 							(short) random.nextInt(256));
 				} else {
-					strip.setPixelColor(i, (short) 255, (short) 255, (short) 255);
+					strip.setPixelColor(i, (short) 0, (short) 0, (short) 0);
 				}
 			}
-			strip.show();
 			strip.show();
 
 			Thread.sleep(500);

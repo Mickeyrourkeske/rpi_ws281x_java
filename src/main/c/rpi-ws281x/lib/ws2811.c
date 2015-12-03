@@ -15,7 +15,7 @@
  *         provided with the distribution.
  *     3.  Neither the name of the owner nor the names of its contributors may be used to endorse
  *         or promote products derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
  * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
@@ -39,18 +39,17 @@
 #include <sys/mman.h>
 #include <signal.h>
 
-#include "board_info.h"
 #include "mailbox.h"
 #include "clk.h"
 #include "gpio.h"
 #include "dma.h"
 #include "pwm.h"
-
-#include "gamma.h"
+#include "rpihw.h"
 
 #include "ws2811.h"
 
-#define BUS_TO_PHYS(x) ((x)&~0xC0000000)
+
+#define BUS_TO_PHYS(x)                           ((x)&~0xC0000000)
 
 #define OSC_FREQ                                 19200000   // crystal frequency
 
@@ -69,6 +68,19 @@
 #define ARRAY_SIZE(stuff)                        (sizeof(stuff) / sizeof(stuff[0]))
 
 
+// We use the mailbox interface to request memory from the VideoCore.
+// This lets us request one physically contiguous chunk, find its
+// physical address, and map it 'uncached' so that writes from this
+// code are immediately visible to the DMA controller.  This struct
+// holds data relevant to the mailbox interface.
+typedef struct videocore_mbox {
+    int handle;             /* From mbox_open() */
+    unsigned mem_ref;       /* From mem_alloc() */
+    unsigned bus_addr;      /* From mem_lock() */
+    unsigned size;          /* Size of allocation */
+    uint8_t *virt_addr;     /* From mapmem() */
+} videocore_mbox_t;
+
 typedef struct ws2811_device
 {
     volatile uint8_t *pwm_raw;
@@ -78,22 +90,9 @@ typedef struct ws2811_device
     uint32_t dma_cb_addr;
     volatile gpio_t *gpio;
     volatile cm_pwm_t *cm_pwm;
+    videocore_mbox_t mbox;
     int max_count;
 } ws2811_device_t;
-
-// We use the mailbox interface to request memory from the VideoCore.
-// This lets us request one physically contiguous chunk, find its
-// physical address, and map it 'uncached' so that writes from this
-// code are immediately visible to the DMA controller.  This struct
-// holds data relevant to the mailbox interface.
-// TODO: Should we embed this in ws2811_device_t really?
-static struct {
-    int handle;             /* From mbox_open() */
-    unsigned mem_ref;       /* From mem_alloc() */
-    unsigned bus_addr;      /* From mem_lock() */
-    unsigned size;          /* Size of allocation */
-    uint8_t *virt_addr;     /* From mapmem() */
-} mbox;
 
 /**
  * Iterate through the channels and find the largest led count.
@@ -127,13 +126,16 @@ static int max_channel_led_count(ws2811_t *ws2811)
 static int map_registers(ws2811_t *ws2811)
 {
     ws2811_device_t *device = ws2811->device;
-    uint32_t dma_addr = dmanum_to_phys(ws2811->dmanum);
-    uint32_t base = board_info_peripheral_base_addr();
+    const rpi_hw_t *rpi_hw = ws2811->rpi_hw;
+    uint32_t base = ws2811->rpi_hw->periph_base;
+    uint32_t dma_addr;
 
+    dma_addr = dmanum_to_offset(ws2811->dmanum);
     if (!dma_addr)
     {
         return -1;
     }
+    dma_addr += rpi_hw->periph_base;
 
     device->dma = mapmem(dma_addr, sizeof(dma_t));
     if (!device->dma)
@@ -202,11 +204,13 @@ static void unmap_registers(ws2811_t *ws2811)
  *
  * @returns  Bus address for use by DMA.
  */
-static uint32_t addr_to_bus(const volatile void *virt)
+static uint32_t addr_to_bus(ws2811_device_t *device, const volatile void *virt)
 {
-    uint32_t offset = (uint8_t *)virt - mbox.virt_addr;
+    videocore_mbox_t *mbox = &device->mbox;
 
-    return mbox.bus_addr + offset;
+    uint32_t offset = (uint8_t *)virt - mbox->virt_addr;
+
+    return mbox->bus_addr + offset;
 }
 
 /**
@@ -286,7 +290,7 @@ static int setup_pwm(ws2811_t *ws2811)
                  RPI_DMA_TI_PERMAP(5) |       // PWM peripheral
                  RPI_DMA_TI_SRC_INC;          // Increment src addr
 
-    dma_cb->source_ad = addr_to_bus(device->pwm_raw);
+    dma_cb->source_ad = addr_to_bus(device, device->pwm_raw);
 
     dma_cb->dest_ad = (uint32_t)&((pwm_t *)PWM_PERIPH_PHYS)->fif1;
     dma_cb->txfr_len = byte_count;
@@ -315,7 +319,10 @@ static void dma_start(ws2811_t *ws2811)
 
     dma->cs = RPI_DMA_CS_RESET;
     usleep(10);
+
     dma->cs = RPI_DMA_CS_INT | RPI_DMA_CS_END;
+    usleep(10);
+
     dma->conblk_ad = dma_cb_addr;
     dma->debug = 7; // clear debug error flags
     dma->cs = RPI_DMA_CS_WAIT_OUTSTANDING_WRITES |
@@ -403,7 +410,9 @@ void pwm_raw_init(ws2811_t *ws2811)
  */
 void ws2811_cleanup(ws2811_t *ws2811)
 {
+    ws2811_device_t *device = ws2811->device;
     int chan;
+
     for (chan = 0; chan < RPI_PWM_CHANNELS; chan++)
     {
         if (ws2811->channel[chan].leds)
@@ -413,17 +422,18 @@ void ws2811_cleanup(ws2811_t *ws2811)
         ws2811->channel[chan].leds = NULL;
     }
 
-    if (mbox.virt_addr != NULL)
+    if (device->mbox.handle != -1)
     {
-        unmapmem(mbox.virt_addr, mbox.size);
-        mem_unlock(mbox.handle, mbox.mem_ref);
-        mem_free(mbox.handle, mbox.mem_ref);
-        if (mbox.handle >= 0)
-            mbox_close(mbox.handle);
-        memset(&mbox, 0, sizeof(mbox));
+        videocore_mbox_t *mbox = &device->mbox;
+
+        unmapmem(mbox->virt_addr, mbox->size);
+        mem_unlock(mbox->handle, mbox->mem_ref);
+        mem_free(mbox->handle, mbox->mem_ref);
+        mbox_close(mbox->handle);
+
+        mbox->handle = -1;
     }
 
-    ws2811_device_t *device = ws2811->device;
     if (device) {
         free(device);
     }
@@ -447,11 +457,16 @@ void ws2811_cleanup(ws2811_t *ws2811)
  */
 int ws2811_init(ws2811_t *ws2811)
 {
-    ws2811_device_t *device = NULL;
+    ws2811_device_t *device;
+    const rpi_hw_t *rpi_hw;
     int chan;
 
-    // Zero mbox; non-zero values indicate action needed on cleanup
-    memset(&mbox, 0, sizeof(mbox));
+    ws2811->rpi_hw = rpi_hw_detect();
+    if (!ws2811->rpi_hw)
+    {
+        return -1;
+    }
+    rpi_hw = ws2811->rpi_hw;
 
     ws2811->device = malloc(sizeof(*ws2811->device));
     if (!ws2811->device)
@@ -461,28 +476,31 @@ int ws2811_init(ws2811_t *ws2811)
     device = ws2811->device;
 
     // Determine how much physical memory we need for DMA
-    mbox.size = PWM_BYTE_COUNT(max_channel_led_count(ws2811), ws2811->freq) +
-               + sizeof(dma_cb_t);
+    device->mbox.size = PWM_BYTE_COUNT(max_channel_led_count(ws2811), ws2811->freq) +
+                        sizeof(dma_cb_t);
     // Round up to page size multiple
-    mbox.size = (mbox.size + PAGE_SIZE - 1) & ~(PAGE_SIZE - 1);
+    device->mbox.size = (device->mbox.size + (PAGE_SIZE - 1)) & ~(PAGE_SIZE - 1);
 
-    // Use the mailbox interface to request memory from the VideoCore
-    // We specifiy (-1) for the handle rather than calling mbox_open()
-    // so multiple users can share the resource.
-    mbox.handle = -1; // mbox_open();
-    mbox.mem_ref = mem_alloc(mbox.handle, mbox.size, PAGE_SIZE,
-            board_info_sdram_address() == 0x40000000 ? 0xC : 0x4);
-    if (mbox.mem_ref < 0)
+    device->mbox.handle = mbox_open();
+    if (device->mbox.handle == -1)
+    {
+        return -1;
+    }
+
+    device->mbox.mem_ref = mem_alloc(device->mbox.handle, device->mbox.size, PAGE_SIZE,
+                                     rpi_hw->videocore_base == 0x40000000 ? 0xC : 0x4);
+    if (device->mbox.mem_ref < 0)
     {
        return -1;
     }
-    mbox.bus_addr = mem_lock(mbox.handle, mbox.mem_ref);
-    if (mbox.bus_addr == ~0)
+
+    device->mbox.bus_addr = mem_lock(device->mbox.handle, device->mbox.mem_ref);
+    if (device->mbox.bus_addr == ~0UL)
     {
-       mem_free(mbox.handle, mbox.size);
+       mem_free(device->mbox.handle, device->mbox.size);
        return -1;
     }
-    mbox.virt_addr = mapmem(BUS_TO_PHYS(mbox.bus_addr), mbox.size);
+    device->mbox.virt_addr = mapmem(BUS_TO_PHYS(device->mbox.bus_addr), device->mbox.size);
 
     // Initialize all pointers to NULL.  Any non-NULL pointers will be freed on cleanup.
     device->pwm_raw = NULL;
@@ -506,15 +524,15 @@ int ws2811_init(ws2811_t *ws2811)
         memset(channel->leds, 0, sizeof(ws2811_led_t) * channel->count);
     }
 
-    device->dma_cb = (dma_cb_t *)mbox.virt_addr;
-    device->pwm_raw = (uint8_t *)mbox.virt_addr + sizeof(dma_cb_t);
+    device->dma_cb = (dma_cb_t *)device->mbox.virt_addr;
+    device->pwm_raw = (uint8_t *)device->mbox.virt_addr + sizeof(dma_cb_t);
 
     pwm_raw_init(ws2811);
 
     memset((dma_cb_t *)device->dma_cb, 0, sizeof(dma_cb_t));
 
     // Cache the DMA control block bus address
-    device->dma_cb_addr = addr_to_bus(device->dma_cb);
+    device->dma_cb_addr = addr_to_bus(device, device->dma_cb);
 
     // Map the physical registers into userspace
     if (map_registers(ws2811))
@@ -611,9 +629,9 @@ int ws2811_render(ws2811_t *ws2811)
         {
             uint8_t color[] =
             {
-                (ws281x_gamma[((channel->leds[i] >> 8)  & 0xff)] * scale) >> 8, // green
-                (ws281x_gamma[((channel->leds[i] >> 16) & 0xff)] * scale) >> 8, // red
-                (ws281x_gamma[((channel->leds[i] >> 0)  & 0xff)] * scale) >> 8, // blue
+                (((channel->leds[i] >> 8)  & 0xff) * scale) >> 8, // green
+                (((channel->leds[i] >> 16) & 0xff) * scale) >> 8, // red
+                (((channel->leds[i] >> 0)  & 0xff) * scale) >> 8, // blue
             };
 
             for (j = 0; j < ARRAY_SIZE(color); j++)        // Color

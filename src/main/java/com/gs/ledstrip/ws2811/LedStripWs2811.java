@@ -31,10 +31,10 @@ public class LedStripWs2811 implements LedStrip {
 		channel0.setBrightness(brightness);
 		
 		ws2811_channel_t channel1 = rpi_ws281x.ws2811_channel_get(ledstring, 1);
-		channel1.setGpionum(pin);
-		channel1.setCount(count);
+		channel1.setGpionum(0);
+		channel1.setCount(0);
 		channel1.setInvert(0);
-		channel1.setBrightness(brightness);
+		channel1.setBrightness(0);
 		
 		channel = channel0;
 		
@@ -89,6 +89,7 @@ public class LedStripWs2811 implements LedStrip {
 
 	@Override
 	public void shutdown() {
+		clear();
 		rpi_ws281x.ws2811_fini(ledstring);
 		ledstring.delete();
 	}

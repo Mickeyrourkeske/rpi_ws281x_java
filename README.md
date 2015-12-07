@@ -1,4 +1,4 @@
-# RPi Library for ws2812
+# RPi Library for ws281x
 
 This is a based on [tobyweston/unicorn-hat](https://github.com/tobyweston/unicorn-hat) and [jgarff/rpi_ws281x](https://github.com/jgarff/rpi_ws281x)
 

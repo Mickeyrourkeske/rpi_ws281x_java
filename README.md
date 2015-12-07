@@ -1,6 +1,6 @@
 # RPi Library for ws2812
 
-This is a based on [tobyweston/unicorn-hat](https://github.com/tobyweston/unicorn-hat)
+This is a based on [tobyweston/unicorn-hat](https://github.com/tobyweston/unicorn-hat) and [jgarff/rpi_ws281x](https://github.com/jgarff/rpi_ws281x)
 
 Gives low-level access to led strip ws281x
 

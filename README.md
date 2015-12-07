@@ -10,10 +10,6 @@ Gives low-level access to led strip ws281x
 
 
 ```
-cd src/main/c/rpi-ws281x/lib
-scons
-cd -
-
 cd src/main/c/rpi-ws281x/
 make swig_prep
 make build

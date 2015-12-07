@@ -12,20 +12,16 @@ public class Main {
 	public static void main(String[] args) throws Exception {
 		LedStrip strip = new LedStripWs2811(15, 18, 800000, 5, 255);
 		strip.clear();
-		strip.show();
 
 		strip.setAllPixelColors((short) 255, (short) 0, (short) 0);
-		strip.show();
 		strip.show();
 		Thread.sleep(2000);
 
 		strip.setAllPixelColors((short) 0, (short) 255, (short) 0);
 		strip.show();
-		strip.show();
 		Thread.sleep(2000);
 
 		strip.setAllPixelColors((short) 0, (short) 0, (short) 255);
-		strip.show();
 		strip.show();
 		Thread.sleep(2000);
 
@@ -37,7 +33,8 @@ public class Main {
 				if (i != j) {
 					strip.setPixelColor(j, (short) random.nextInt(256), (short) random.nextInt(256),
 							(short) random.nextInt(256));
-				} else {
+				}
+				else {
 					strip.setPixelColor(i, (short) 0, (short) 0, (short) 0);
 				}
 			}
@@ -45,7 +42,7 @@ public class Main {
 
 			Thread.sleep(500);
 		}
-		
+
 		strip.shutdown();
 
 	}

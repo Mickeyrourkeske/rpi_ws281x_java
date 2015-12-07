@@ -5,39 +5,42 @@ import com.gs.ledstrip.LedStrip;
 public class LedStripWs2811 implements LedStrip {
 
 	private final int numPixels;
-	
+
 	private final ws2811_t ledstring = new ws2811_t();
 	private final ws2811_channel_t channel;
-	
+
 	/**
-	 * @param count number of LED pixels
-	 * @param pin GPIO pin connected to the pixels (must support PWM!)
-	 * @param freqHz LED signal frequency in hertz (usually 800000hz)
-	 * @param dma  DMA channel to use for generating signal (try 5)
-	 * @param invert true to invert the signal (when using NPN transistor level shift)
-	 * @param brightness Set to 0 for darkest and 255 for brightest
-	 * @param channel the PWM channel to use
+	 * @param count
+	 *            number of LED pixels
+	 * @param pin
+	 *            GPIO pin connected to the pixels (must support PWM!)
+	 * @param freqHz
+	 *            LED signal frequency in hertz (usually 800000hz)
+	 * @param dma
+	 *            DMA channel to use for generating signal (try 5)
+	 * @param brightness
+	 *            Set to 0 for darkest and 255 for brightest
 	 */
 	public LedStripWs2811(int count, int pin, int freqHz, int dma, int brightness) {
 		this.numPixels = count;
-		
+
 		ledstring.setFreq(freqHz);
 		ledstring.setDmanum(dma);
-		
+
 		ws2811_channel_t channel0 = rpi_ws281x.ws2811_channel_get(ledstring, 0);
 		channel0.setGpionum(pin);
 		channel0.setCount(count);
 		channel0.setInvert(0);
 		channel0.setBrightness(brightness);
-		
+
 		ws2811_channel_t channel1 = rpi_ws281x.ws2811_channel_get(ledstring, 1);
 		channel1.setGpionum(0);
 		channel1.setCount(0);
 		channel1.setInvert(0);
 		channel1.setBrightness(0);
-		
+
 		channel = channel0;
-		
+
 		int result = rpi_ws281x.ws2811_init(ledstring);
 		if (result != 0) {
 			throw new RuntimeException("ws2811_init failed with code " + result);
@@ -48,7 +51,7 @@ public class LedStripWs2811 implements LedStrip {
 	public void setPixelColor(int pixel, short r, short g, short b) {
 		long colour = (r << 16) | (g << 8) | b;
 		rpi_ws281x.ws2811_led_set(channel, pixel, colour);
-		
+
 	}
 
 	@Override
@@ -90,7 +93,8 @@ public class LedStripWs2811 implements LedStrip {
 	@Override
 	public void shutdown() {
 		clear();
-		rpi_ws281x.ws2811_fini(ledstring);
+		// TODO https://github.com/jgarff/rpi_ws281x/issues/48
+		// rpi_ws281x.ws2811_fini(ledstring);
 		ledstring.delete();
 	}
 

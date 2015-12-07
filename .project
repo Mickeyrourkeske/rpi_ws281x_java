@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-	<name>rpi_ws2812_java</name>
+	<name>rpi_ws281x_java</name>
 	<comment></comment>
 	<projects>
 	</projects>

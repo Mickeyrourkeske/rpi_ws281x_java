@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.gs.ledstrip</groupId>
-    <artifactId>rpi_ws2812_java</artifactId>
+    <artifactId>rpi_ws281x_java</artifactId>
     <version>1.0</version>
 
     <properties>

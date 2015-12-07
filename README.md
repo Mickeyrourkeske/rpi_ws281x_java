@@ -2,7 +2,7 @@
 
 This is a based on [tobyweston/unicorn-hat](https://github.com/tobyweston/unicorn-hat)
 
-Gives low-level access to led strip ws2812
+Gives low-level access to led strip ws281x
 
 
 ## Build
@@ -10,6 +10,10 @@ Gives low-level access to led strip ws2812
 
 
 ```
+cd src/main/c/rpi-ws281x/lib
+scons
+cd -
+
 cd src/main/c/rpi-ws281x/
 make swig_prep
 make build

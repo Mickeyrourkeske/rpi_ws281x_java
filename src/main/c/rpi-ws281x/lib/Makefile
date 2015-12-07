@@ -6,7 +6,8 @@ lib:
 	gcc -o dma.o -c -g -O2 -Wall -Werror dma.c
 	gcc -o board_info.o -c -g -O2 -Wall -Werror board_info.c
 	gcc -o mailbox.o -c -g -O2 -Wall -Werror mailbox.c
-	ar rc libws2811.a ws2811.o pwm.o dma.o board_info.o mailbox.o
+	gcc -o rpihw.o -c -g -O2 -Wall -Werror rpihw.c
+	ar rc libws2811.a ws2811.o pwm.o dma.o board_info.o mailbox.o rpihw.o
 	ranlib libws2811.a
 
 test:
@@ -14,6 +15,6 @@ test:
 	gcc -o test main.o libws2811.a
 
 clean:
-	-rm ws2811.o pwm.o dma.o board_info.o mailbox.o
+	-rm ws2811.o pwm.o dma.o board_info.o mailbox.o rpihw.o
 	-rm libws2811.a
 	-rm test
